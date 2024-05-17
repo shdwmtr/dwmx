@@ -1,5 +1,6 @@
 import ctypes
 from ctypes import wintypes
+import logging
 
 DWMWA_WINDOW_CORNER_PREFERENCE = 33
 
@@ -51,7 +52,7 @@ def EnableBlurBehind(target):
     result = SetWindowCompositionAttribute(target, ctypes.byref(data))
 
     if not result:
-        #print("SetWindowCompositionAttribute failed")
+        logging.info("SetWindowCompositionAttribute failed")
         return False
 
     return True

@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "build": "rollup -c"
+    "dev-build": "millennium-lib --build dev",
+    "prod-build": "millennium-lib --build prod"
   },
   "devDependencies": {
     "@babel/core": "^7.24.4",
@@ -33,5 +34,8 @@
   "description": "a template plugin for millennium",
   "main": "./frontend/index.jsx",
   "author": "Millennium",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "millennium-lib": "^3.3.8"
+  }
 }
