@@ -1,1 +1,1 @@
-Mica & Acrylic window effects for Steam on Windows 11
+Extended Desktop Window Manager (DWMX) for Steam on Windows 11
