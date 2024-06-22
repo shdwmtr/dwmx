@@ -1,32 +1,7 @@
 {
   "scripts": {
-    "dev-build": "millennium-lib --build dev",
-    "prod-build": "millennium-lib --build prod"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.24.4",
-    "@babel/preset-env": "^7.24.4",
-    "@babel/preset-react": "^7.24.1",
-    "@babel/preset-typescript": "^7.24.1",
-    "@rollup/plugin-babel": "^6.0.4",
-    "@rollup/plugin-commonjs": "^21.1.0",
-    "@rollup/plugin-json": "^4.1.0",
-    "@rollup/plugin-node-resolve": "^13.3.0",
-    "@rollup/plugin-replace": "^4.0.0",
-    "@rollup/plugin-typescript": "^8.5.0",
-    "@types/react": "16.14.0",
-    "@types/webpack": "^5.28.0",
-    "rollup": "^2.79.1",
-    "rollup-plugin-ignore": "^1.0.10",
-    "rollup-plugin-import-assets": "^1.1.1",
-    "rollup-plugin-terser": "^7.0.2",
-    "rollup-plugin-typescript": "^1.0.1",
-    "rollup-plugin-typescript2": "^0.36.0",
-    "rollup-watch": "^4.3.1",
-    "shx": "^0.3.4",
-    "tslib": "^2.6.2",
-    "typescript": "^4.9.5",
-    "typings": "^2.1.1"
+    "dev": "millennium-lib --build dev",
+    "build": "millennium-lib --build prod"
   },
   "type": "module",
   "name": "millennium-plugin",
@@ -36,6 +11,6 @@
   "author": "Millennium",
   "license": "MIT",
   "dependencies": {
-    "millennium-lib": "^3.3.8"
+    "millennium-lib": "^3.4.8"
   }
 }
