@@ -6,6 +6,7 @@ import win32process
 from utils.user32 import get_proc_name
 from utils.set_attr import patch_window
 import logging
+import Millennium
 
 # Configure logging to write to a file
 logging.basicConfig(filename='mica-plugin.log', level=logging.INFO)
@@ -67,6 +68,8 @@ class Plugin:
         # Set up the event hook
         # Enter a message loop to keep the hook running asynchronously.
         # This ensures that the system can process messages and events while the hook remains active.
+        Millennium.ready()
+
         msg = ctypes.wintypes.MSG()
         while self.__listen:
             while user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, win32con.PM_REMOVE):
