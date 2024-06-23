@@ -37,10 +37,10 @@ def callback(hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsE
     tid, pid = win32process.GetWindowThreadProcessId(hwnd)
     process_name = get_proc_name(pid)
 
-    logging.info(process_name)
+    # logging.info(process_name)
 
     if process_name == "steamwebhelper.exe":
-        logging.info("patching steam window")
+        # logging.info("patching steam window")
         patch_window(hwnd)
 
 
@@ -51,7 +51,7 @@ class Plugin:
 
 
     def _load(self):     
-        logging.info("loading mica effects")
+        print("loading dwmx...")
         WinEventProc = WinEventProcType(callback)
 
         user32.SetWinEventHook.restype = ctypes.wintypes.HANDLE

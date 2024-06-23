@@ -1,6 +1,6 @@
 {
     "common_name": "Mica & Acrylic for Steam",
-    "name": "steam-mica",
+    "name": "dwmx",
     "description": "Enable custom window backdrops on supporting themes.",
     "venv": ".millennium"
 }
