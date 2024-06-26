@@ -1,6 +1,5 @@
 import ctypes
 from ctypes import wintypes
-import logging
 
 # Define constants
 DWMWA_WINDOW_CORNER_PREFERENCE = 33
@@ -51,16 +50,16 @@ def EnableBlurBehind(target):
     result = SetWindowCompositionAttribute(target, ctypes.byref(data))
 
     if not result:
-        logging.info("SetWindowCompositionAttribute failed")
+        # logging.info("SetWindowCompositionAttribute failed")
         return False
 
     return True
 
 # Load dwmapi.dll library
-dwmapi = ctypes.WinDLL("dwmapi")
-DwmSetWindowAttribute = dwmapi.DwmSetWindowAttribute
+# dwmapi = ctypes.WinDLL("dwmapi")
+# DwmSetWindowAttribute = dwmapi.DwmSetWindowAttribute
 
 def patch_window(hwnd):
     value = ctypes.c_int(2)
-    DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ctypes.byref(value), ctypes.sizeof(value))
+    ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ctypes.byref(value), ctypes.sizeof(value))
     EnableBlurBehind(hwnd)

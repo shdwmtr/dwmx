@@ -8,8 +8,11 @@ from utils.set_attr import patch_window
 import logging
 import Millennium
 
-# Configure logging to write to a file
-logging.basicConfig(filename='mica-plugin.log', level=logging.INFO)
+logger = logging.getLogger('my_logger')
+
+# Set the logging level
+logger.setLevel(logging.DEBUG)
+
 
 WINEVENT_OUTOFCONTEXT = 0x0000
 
@@ -52,7 +55,8 @@ class Plugin:
 
 
     def _load(self):     
-        print("loading dwmx...")
+        print("warming dwmx...")
+        logging.info("patching window...")
         WinEventProc = WinEventProcType(callback)
 
         user32.SetWinEventHook.restype = ctypes.wintypes.HANDLE
