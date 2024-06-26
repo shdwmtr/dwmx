@@ -25,6 +25,7 @@ from psutil import POSIX
 from psutil import SUNOS
 from psutil.tests import HAS_NET_IO_COUNTERS
 from psutil.tests import PYTHON_EXE
+from psutil.tests import QEMU_USER
 from psutil.tests import PsutilTestCase
 from psutil.tests import mock
 from psutil.tests import retry_on_failure
@@ -102,7 +103,11 @@ def ps_name(pid):
     field = "command"
     if SUNOS:
         field = "comm"
-    return ps(field, pid).split()[0]
+    command = ps(field, pid).split()
+    if QEMU_USER:
+        assert "/bin/qemu-" in command[0]
+        return command[1]
+    return command[0]
 
 
 def ps_args(pid):
@@ -342,7 +347,7 @@ class TestSystemAPIs(PsutilTestCase):
     def test_users(self):
         out = sh("who -u")
         if not out.strip():
-            raise self.skipTest("no users on this system")
+            raise unittest.SkipTest("no users on this system")
         lines = out.split('\n')
         users = [x.split()[0] for x in lines]
         terminals = [x.split()[1] for x in lines]
@@ -358,7 +363,7 @@ class TestSystemAPIs(PsutilTestCase):
     def test_users_started(self):
         out = sh("who -u")
         if not out.strip():
-            raise self.skipTest("no users on this system")
+            raise unittest.SkipTest("no users on this system")
         tstamp = None
         # '2023-04-11 09:31' (Linux)
         started = re.findall(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d", out)
@@ -444,7 +449,7 @@ class TestSystemAPIs(PsutilTestCase):
                 out = sh("df -k %s" % device).strip()
             except RuntimeError as err:
                 if "device busy" in str(err).lower():
-                    raise self.skipTest("df returned EBUSY")
+                    raise unittest.SkipTest("df returned EBUSY")
                 raise
             line = out.split('\n')[1]
             fields = line.split()

@@ -37,12 +37,12 @@ List of APIs returning or dealing with a string:
 ('not tested' means they are not tested to deal with non-ASCII strings):
 
 * Process.cmdline()
-* Process.connections('unix')
 * Process.cwd()
 * Process.environ()
 * Process.exe()
 * Process.memory_maps()
 * Process.name()
+* Process.net_connections('unix')
 * Process.open_files()
 * Process.username()             (not tested)
 
@@ -85,13 +85,12 @@ from psutil import POSIX
 from psutil import WINDOWS
 from psutil._compat import PY3
 from psutil._compat import super
-from psutil._compat import u
 from psutil.tests import APPVEYOR
 from psutil.tests import ASCII_FS
 from psutil.tests import CI_TESTING
-from psutil.tests import HAS_CONNECTIONS_UNIX
 from psutil.tests import HAS_ENVIRON
 from psutil.tests import HAS_MEMORY_MAPS
+from psutil.tests import HAS_NET_CONNECTIONS_UNIX
 from psutil.tests import INVALID_UNICODE_SUFFIX
 from psutil.tests import PYPY
 from psutil.tests import TESTFN_PREFIX
@@ -176,7 +175,7 @@ class BaseUnicodeTest(PsutilTestCase):
     def setUp(self):
         super().setUp()
         if self.skip_tests:
-            raise self.skipTest("can't handle unicode str")
+            raise unittest.SkipTest("can't handle unicode str")
 
 
 @serialrun
@@ -190,7 +189,7 @@ class TestFSAPIs(BaseUnicodeTest):
     def expect_exact_path_match(self):
         # Do not expect psutil to correctly handle unicode paths on
         # Python 2 if os.listdir() is not able either.
-        here = '.' if isinstance(self.funky_name, str) else u('.')
+        here = '.' if isinstance(self.funky_name, str) else u'.'
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             return self.funky_name in os.listdir(here)
@@ -198,7 +197,11 @@ class TestFSAPIs(BaseUnicodeTest):
     # ---
 
     def test_proc_exe(self):
-        cmd = [self.funky_name, "-c", "import time; time.sleep(10)"]
+        cmd = [
+            self.funky_name,
+            "-c",
+            "import time; [time.sleep(0.1) for x in range(100)]",
+        ]
         subp = self.spawn_testproc(cmd)
         p = psutil.Process(subp.pid)
         exe = p.exe()
@@ -209,7 +212,11 @@ class TestFSAPIs(BaseUnicodeTest):
             )
 
     def test_proc_name(self):
-        cmd = [self.funky_name, "-c", "import time; time.sleep(10)"]
+        cmd = [
+            self.funky_name,
+            "-c",
+            "import time; [time.sleep(0.1) for x in range(100)]",
+        ]
         subp = self.spawn_testproc(cmd)
         name = psutil.Process(subp.pid).name()
         self.assertIsInstance(name, str)
@@ -217,7 +224,11 @@ class TestFSAPIs(BaseUnicodeTest):
             self.assertEqual(name, os.path.basename(self.funky_name))
 
     def test_proc_cmdline(self):
-        cmd = [self.funky_name, "-c", "import time; time.sleep(10)"]
+        cmd = [
+            self.funky_name,
+            "-c",
+            "import time; [time.sleep(0.1) for x in range(100)]",
+        ]
         subp = self.spawn_testproc(cmd)
         p = psutil.Process(subp.pid)
         cmdline = p.cmdline()
@@ -247,14 +258,14 @@ class TestFSAPIs(BaseUnicodeTest):
         self.assertIsInstance(path, str)
         if BSD and not path:
             # XXX - see https://github.com/giampaolo/psutil/issues/595
-            return self.skipTest("open_files on BSD is broken")
+            raise unittest.SkipTest("open_files on BSD is broken")
         if self.expect_exact_path_match():
             self.assertEqual(
                 os.path.normcase(path), os.path.normcase(self.funky_name)
             )
 
     @unittest.skipIf(not POSIX, "POSIX only")
-    def test_proc_connections(self):
+    def test_proc_net_connections(self):
         name = self.get_testfn(suffix=self.funky_suffix)
         try:
             sock = bind_unix_socket(name)
@@ -264,12 +275,12 @@ class TestFSAPIs(BaseUnicodeTest):
             else:
                 raise unittest.SkipTest("not supported")
         with closing(sock):
-            conn = psutil.Process().connections('unix')[0]
+            conn = psutil.Process().net_connections('unix')[0]
             self.assertIsInstance(conn.laddr, str)
             self.assertEqual(conn.laddr, name)
 
     @unittest.skipIf(not POSIX, "POSIX only")
-    @unittest.skipIf(not HAS_CONNECTIONS_UNIX, "can't list UNIX sockets")
+    @unittest.skipIf(not HAS_NET_CONNECTIONS_UNIX, "can't list UNIX sockets")
     @skip_on_access_denied()
     def test_net_connections(self):
         def find_sock(cons):

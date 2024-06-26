@@ -15,11 +15,11 @@ import os
 import pickle
 import socket
 import stat
+import sys
 import unittest
 
 import psutil
 import psutil.tests
-from psutil import LINUX
 from psutil import POSIX
 from psutil import WINDOWS
 from psutil._common import bcat
@@ -34,7 +34,6 @@ from psutil._common import wrap_numbers
 from psutil._compat import PY3
 from psutil._compat import FileNotFoundError
 from psutil._compat import redirect_stderr
-from psutil.tests import APPVEYOR
 from psutil.tests import CI_TESTING
 from psutil.tests import HAS_BATTERY
 from psutil.tests import HAS_MEMORY_MAPS
@@ -44,11 +43,14 @@ from psutil.tests import HAS_SENSORS_FANS
 from psutil.tests import HAS_SENSORS_TEMPERATURES
 from psutil.tests import PYTHON_EXE
 from psutil.tests import PYTHON_EXE_ENV
+from psutil.tests import QEMU_USER
 from psutil.tests import SCRIPTS_DIR
 from psutil.tests import PsutilTestCase
 from psutil.tests import mock
+from psutil.tests import process_namespace
 from psutil.tests import reload_module
 from psutil.tests import sh
+from psutil.tests import system_namespace
 
 
 # ===================================================================
@@ -218,6 +220,7 @@ class TestMisc(PsutilTestCase):
         dir_psutil = dir(psutil)
         for name in dir_psutil:
             if name in (
+                'debug',
                 'long',
                 'tests',
                 'test',
@@ -259,33 +262,91 @@ class TestMisc(PsutilTestCase):
 
     def test_serialization(self):
         def check(ret):
-            if json is not None:
-                json.loads(json.dumps(ret))
+            json.loads(json.dumps(ret))
+
             a = pickle.dumps(ret)
             b = pickle.loads(a)
             self.assertEqual(ret, b)
 
+        # --- process APIs
+
+        proc = psutil.Process()
         check(psutil.Process().as_dict())
-        check(psutil.virtual_memory())
-        check(psutil.swap_memory())
-        check(psutil.cpu_times())
-        check(psutil.cpu_times_percent(interval=0))
-        check(psutil.net_io_counters())
-        if LINUX and not os.path.exists('/proc/diskstats'):
-            pass
-        else:
-            if not APPVEYOR:
-                check(psutil.disk_io_counters())
-        check(psutil.disk_partitions())
-        check(psutil.disk_usage(os.getcwd()))
-        check(psutil.users())
+
+        ns = process_namespace(proc)
+        for fun, name in ns.iter(ns.getters, clear_cache=True):
+            with self.subTest(proc=proc, name=name):
+                try:
+                    ret = fun()
+                except psutil.Error:
+                    pass
+                else:
+                    check(ret)
+
+        # --- system APIs
+
+        ns = system_namespace()
+        for fun, name in ns.iter(ns.getters):
+            if name in {"win_service_iter", "win_service_get"}:
+                continue
+            if QEMU_USER and name == "net_if_stats":
+                # OSError: [Errno 38] ioctl(SIOCETHTOOL) not implemented
+                continue
+            with self.subTest(name=name):
+                try:
+                    ret = fun()
+                except psutil.AccessDenied:
+                    pass
+                else:
+                    check(ret)
+
+        # --- exception classes
+
+        b = pickle.loads(
+            pickle.dumps(
+                psutil.NoSuchProcess(pid=4567, name='name', msg='msg')
+            )
+        )
+        self.assertIsInstance(b, psutil.NoSuchProcess)
+        self.assertEqual(b.pid, 4567)
+        self.assertEqual(b.name, 'name')
+        self.assertEqual(b.msg, 'msg')
+
+        b = pickle.loads(
+            pickle.dumps(
+                psutil.ZombieProcess(pid=4567, name='name', ppid=42, msg='msg')
+            )
+        )
+        self.assertIsInstance(b, psutil.ZombieProcess)
+        self.assertEqual(b.pid, 4567)
+        self.assertEqual(b.ppid, 42)
+        self.assertEqual(b.name, 'name')
+        self.assertEqual(b.msg, 'msg')
+
+        b = pickle.loads(
+            pickle.dumps(psutil.AccessDenied(pid=123, name='name', msg='msg'))
+        )
+        self.assertIsInstance(b, psutil.AccessDenied)
+        self.assertEqual(b.pid, 123)
+        self.assertEqual(b.name, 'name')
+        self.assertEqual(b.msg, 'msg')
+
+        b = pickle.loads(
+            pickle.dumps(
+                psutil.TimeoutExpired(seconds=33, pid=4567, name='name')
+            )
+        )
+        self.assertIsInstance(b, psutil.TimeoutExpired)
+        self.assertEqual(b.seconds, 33)
+        self.assertEqual(b.pid, 4567)
+        self.assertEqual(b.name, 'name')
 
     # # XXX: https://github.com/pypa/setuptools/pull/2896
     # @unittest.skipIf(APPVEYOR, "temporarily disabled due to setuptools bug")
     # def test_setup_script(self):
     #     setup_py = os.path.join(ROOT_DIR, 'setup.py')
     #     if CI_TESTING and not os.path.exists(setup_py):
-    #         return self.skipTest("can't find setup.py")
+    #         raise unittest.SkipTest("can't find setup.py")
     #     module = import_module_by_path(setup_py)
     #     self.assertRaises(SystemExit, module.setup)
     #     self.assertEqual(module.get_version(), psutil.__version__)
@@ -577,6 +638,7 @@ class TestCommonModule(PsutilTestCase):
 
         with redirect_stderr(StringIO()) as f:
             debug("hello")
+            sys.stderr.flush()
         msg = f.getvalue()
         assert msg.startswith("psutil-debug"), msg
         self.assertIn("hello", msg)
@@ -850,7 +912,7 @@ class TestWrapNumbers(PsutilTestCase):
     @unittest.skipIf(not HAS_NET_IO_COUNTERS, 'not supported')
     def test_cache_clear_public_apis(self):
         if not psutil.disk_io_counters() or not psutil.net_io_counters():
-            return self.skipTest("no disks or NICs available")
+            raise unittest.SkipTest("no disks or NICs available")
         psutil.disk_io_counters()
         psutil.net_io_counters()
         caches = wrap_numbers.cache_info()
@@ -950,6 +1012,7 @@ class TestScripts(PsutilTestCase):
     def test_netstat(self):
         self.assert_stdout('netstat.py')
 
+    @unittest.skipIf(QEMU_USER, 'QEMU user not supported')
     def test_ifconfig(self):
         self.assert_stdout('ifconfig.py')
 
@@ -959,7 +1022,7 @@ class TestScripts(PsutilTestCase):
 
     def test_procsmem(self):
         if 'uss' not in psutil.Process().memory_full_info()._fields:
-            raise self.skipTest("not supported")
+            raise unittest.SkipTest("not supported")
         self.assert_stdout('procsmem.py')
 
     def test_killall(self):
@@ -988,13 +1051,13 @@ class TestScripts(PsutilTestCase):
     @unittest.skipIf(not HAS_SENSORS_TEMPERATURES, "not supported")
     def test_temperatures(self):
         if not psutil.sensors_temperatures():
-            self.skipTest("no temperatures")
+            raise unittest.SkipTest("no temperatures")
         self.assert_stdout('temperatures.py')
 
     @unittest.skipIf(not HAS_SENSORS_FANS, "not supported")
     def test_fans(self):
         if not psutil.sensors_fans():
-            self.skipTest("no fans")
+            raise unittest.SkipTest("no fans")
         self.assert_stdout('fans.py')
 
     @unittest.skipIf(not HAS_SENSORS_BATTERY, "not supported")

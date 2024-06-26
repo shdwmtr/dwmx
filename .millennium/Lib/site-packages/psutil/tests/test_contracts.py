@@ -30,6 +30,7 @@ from psutil.tests import HAS_NET_IO_COUNTERS
 from psutil.tests import HAS_SENSORS_FANS
 from psutil.tests import HAS_SENSORS_TEMPERATURES
 from psutil.tests import PYPY
+from psutil.tests import QEMU_USER
 from psutil.tests import SKIP_SYSCONS
 from psutil.tests import PsutilTestCase
 from psutil.tests import create_sockets
@@ -239,7 +240,7 @@ class TestSystemAPITypes(PsutilTestCase):
     @unittest.skipIf(not HAS_CPU_FREQ, "not supported")
     def test_cpu_freq(self):
         if psutil.cpu_freq() is None:
-            raise self.skipTest("cpu_freq() returns None")
+            raise unittest.SkipTest("cpu_freq() returns None")
         self.assert_ntuple_of_nums(psutil.cpu_freq(), type_=(float, int, long))
 
     def test_disk_io_counters(self):
@@ -255,8 +256,6 @@ class TestSystemAPITypes(PsutilTestCase):
             self.assertIsInstance(disk.mountpoint, str)
             self.assertIsInstance(disk.fstype, str)
             self.assertIsInstance(disk.opts, str)
-            self.assertIsInstance(disk.maxfile, (int, type(None)))
-            self.assertIsInstance(disk.maxpath, (int, type(None)))
 
     @unittest.skipIf(SKIP_SYSCONS, "requires root")
     def test_net_connections(self):
@@ -279,6 +278,7 @@ class TestSystemAPITypes(PsutilTestCase):
                 self.assertIsInstance(addr.netmask, (str, type(None)))
                 self.assertIsInstance(addr.broadcast, (str, type(None)))
 
+    @unittest.skipIf(QEMU_USER, 'QEMU user not supported')
     def test_net_if_stats(self):
         # Duplicate of test_system.py. Keep it anyway.
         for ifname, info in psutil.net_if_stats().items():
