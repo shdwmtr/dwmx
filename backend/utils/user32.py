@@ -1,8 +1,7 @@
 import psutil
 
-def get_proc_name(pid):
+def GetProcessName(pid):
     try:
-        process = psutil.Process(pid)
-        return process.name()
+        return psutil.Process(pid).name()
     except psutil.NoSuchProcess:
         return None

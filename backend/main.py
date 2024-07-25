@@ -1,18 +1,13 @@
+import threading
 import win32con
 import ctypes
 import sys
 import ctypes.wintypes
 import win32process
-from utils.user32 import get_proc_name
-from utils.set_attr import patch_window
-import logging
+from utils.logger import logger
+from utils.user32 import GetProcessName
+from utils.set_attr import PatchWindowContext
 import Millennium
-
-logger = logging.getLogger('my_logger')
-
-# Set the logging level
-logger.setLevel(logging.DEBUG)
-
 
 WINEVENT_OUTOFCONTEXT = 0x0000
 
@@ -36,16 +31,11 @@ def callback(hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsE
     if event == 32770:
         return
 
-    logging.info(f"hooked window event -> {event}")
-
-    tid, pid = win32process.GetWindowThreadProcessId(hwnd)
-    process_name = get_proc_name(pid)
-
-    # logging.info(process_name)
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    process_name = GetProcessName(pid)
 
     if process_name == "steamwebhelper.exe":
-        # logging.info("patching steam window")
-        patch_window(hwnd)
+        PatchWindowContext(hwnd)
 
 
 class Plugin:
@@ -53,42 +43,36 @@ class Plugin:
     def _front_end_loaded(self):
         pass
 
-
-    def _load(self):     
-        print("warming dwmx...")
-        logging.info("patching window...")
+    def start_dwmx(self):
         WinEventProc = WinEventProcType(callback)
 
         user32.SetWinEventHook.restype = ctypes.wintypes.HANDLE
         self.__hook = user32.SetWinEventHook(win32con.EVENT_OBJECT_CREATE, win32con.EVENT_OBJECT_SHOW, 0, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT)
 
         if self.__hook == 0:
-            sys.stderr.write('SetWinEventHook failed')
+            logger.error('SetWinEventHook failed')
             self._unload()
         else:
-            logging.info("set window create hook")
-
-        self.__listen = True
-        # Set up the event hook
-        # Enter a message loop to keep the hook running asynchronously.
-        # This ensures that the system can process messages and events while the hook remains active.
-        Millennium.ready()
+            logger.log("set window create hook")
 
         msg = ctypes.wintypes.MSG()
         while self.__listen:
             while user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, win32con.PM_REMOVE):
-                logging.info("listening for message")
                 user32.TranslateMessageW(msg)
                 user32.DispatchMessageW(msg)
 
-        logging.info("closed message listener")
+        logger.log("closed message listener")
+
+    def _load(self):     
+        logger.log("warming dwmx...")
+        self.__listen = True
+        self.dwmx_thread = threading.Thread(target=self.start_dwmx)
+        self.dwmx_thread.start()
+        Millennium.ready()
 
     def _unload(self):
-        logging.info("unloading")
+        logger.log("unloading dwmx...")
+        self.__listen = False
+        self.dwmx_thread.join()
         user32.UnhookWinEvent(self.__hook)
         ole32.CoUninitialize()
-        self.__listen = False
-
-
-plugin = Plugin()
-plugin._load()
