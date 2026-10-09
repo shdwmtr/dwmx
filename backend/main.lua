@@ -12,13 +12,13 @@ typedef void* HANDLE;
 typedef void* HWND;
 typedef const wchar_t* LPCWSTR;
 typedef wchar_t WCHAR;
-typedef unsigned long ULONG_PTR;
-typedef long LONG_PTR;
+typedef uintptr_t ULONG_PTR;
+typedef intptr_t LONG_PTR;
 typedef LONG_PTR LPARAM;
 typedef unsigned int UINT;
 typedef long HRESULT;
 typedef int INT;
-typedef unsigned long SIZE_T;
+typedef size_t SIZE_T;
 typedef char CHAR;
 typedef CHAR *LPSTR;
 
